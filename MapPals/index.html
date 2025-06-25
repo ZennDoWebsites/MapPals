@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mappals Maplists</title>
+
+  <!-- ✅ Firebase compat version (not modular) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    .link-box {
+      background: #fff;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    input {
+      margin: 5px;
+      padding: 8px;
+      width: 200px;
+    }
+    button {
+      padding: 8px 12px;
+      margin: 5px;
+      border: none;
+      border-radius: 5px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .delete-btn {
+      background-color: red;
+    }
+    #linkList {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📁 My Mappals Maplists</h1>
+
+  <!-- 🔐 Login Section -->
+  <div id="authSection">
+    <h2>Login / Register</h2>
+    <input type="email" id="userEmail" placeholder="Email" />
+    <input type="password" id="userPassword" placeholder="Password" />
+    <br/>
+    <button id="registerBtn">Register</button>
+    <button id="loginBtn">Login</button>
+    <button id="googleLoginBtn">Login with Google</button>
+    <button id="logoutBtn">Logout</button>
+  </div>
+
+  <!-- 📤 Link Section -->
+  <div id="linkSection" style="display: none;">
+    <h2>Add MediaFire Link</h2>
+    <input type="text" id="linkTitle" placeholder="File Title" />
+    <input type="text" id="mediafireLink" placeholder="https://www.mediafire.com/..." />
+    <button id="addLinkBtn">Add Link</button>
+    <div id="linkList"></div>
+  </div>
+
+  <!-- 🔊 Optional Background Music -->
+  <!-- Uncomment this if you want to use music.mp3 -->
+  <!--
+  <audio autoplay loop hidden>
+    <source src="music.mp3" type="audio/mpeg" />
+  </audio>
+  -->
+
+  <!-- ✅ Firebase Code -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDUi4wy_iIdJ7jo2kE-vxDet6cQom9dCC8",
+      authDomain: "mediafirelinks.firebaseapp.com",
+      projectId: "mediafirelinks",
+      storageBucket: "mediafirelinks.firebasestorage.app",
+      messagingSenderId: "1069246114871",
+      appId: "1:1069246114871:web:4af2aaf11b27bb837023b2"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const provider = new firebase.auth.GoogleAuthProvider();
+
+    // Event Listeners
+    window.onload = () => {
+      document.getElementById("registerBtn").addEventListener("click", register);
+      document.getElementById("loginBtn").addEventListener("click", login);
+      document.getElementById("logoutBtn").addEventListener("click", logout);
+      document.getElementById("googleLoginBtn").addEventListener("click", googleLogin);
+      document.getElementById("addLinkBtn").addEventListener("click", addLink);
+
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          document.getElementById("authSection").style.display = "none";
+          document.getElementById("linkSection").style.display = "block";
+          loadLinks();
+        } else {
+          document.getElementById("authSection").style.display = "block";
+          document.getElementById("linkSection").style.display = "none";
+        }
+      });
+    };
+
+    // Auth Functions
+    function register() {
+      const email = document.getElementById("userEmail").value;
+      const password = document.getElementById("userPassword").value;
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(() => alert("Registered successfully"))
+        .catch(err => alert(err.message));
+    }
+
+    function login() {
+      const email = document.getElementById("userEmail").value;
+      const password = document.getElementById("userPassword").value;
+      auth.signInWithEmailAndPassword(email, password)
+        .then(() => alert("Logged in!"))
+        .catch(err => alert(err.message));
+    }
+
+    function logout() {
+      auth.signOut().then(() => alert("Logged out"));
+    }
+
+    function googleLogin() {
+      auth.signInWithPopup(provider)
+        .then(result => alert("Signed in as " + result.user.displayName))
+        .catch(err => alert("Google login failed: " + err.message));
+    }
+
+    // Link Management
+    function addLink() {
+      const title = document.getElementById("linkTitle").value.trim();
+      const url = document.getElementById("mediafireLink").value.trim();
+      if (!title || !url) {
+        alert("Please fill in both fields.");
+        return;
+      }
+      const links = JSON.parse(localStorage.getItem("mediafireLinks") || "[]");
+      links.push({ title, url });
+      localStorage.setItem("mediafireLinks", JSON.stringify(links));
+      document.getElementById("linkTitle").value = "";
+      document.getElementById("mediafireLink").value = "";
+      loadLinks();
+    }
+
+    function loadLinks() {
+      const list = document.getElementById("linkList");
+      list.innerHTML = "";
+      const links = JSON.parse(localStorage.getItem("mediafireLinks") || "[]");
+      links.forEach(link => {
+        const div = document.createElement("div");
+        div.className = "link-box";
+        div.innerHTML = `
+          <div><strong>${link.title}:</strong> <a href="${link.url}" target="_blank">${link.url}</a></div>
+          <button class="delete-btn" onclick='deleteLink("${link.title}", "${link.url}")'>Delete</button>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    window.deleteLink = function(title, url) {
+      let links = JSON.parse(localStorage.getItem("mediafireLinks") || "[]");
+      links = links.filter(link => !(link.title === title && link.url === url));
+      localStorage.setItem("mediafireLinks", JSON.stringify(links));
+      loadLinks();
+    };
+  </script>
+</body>
+</html>
